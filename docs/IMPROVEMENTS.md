@@ -281,6 +281,90 @@ also clear it now that they are in the training set.
 
 ---
 
+## 11. Data acquisition: 9.7 GB and a minute per run, both avoidable
+
+The download layer was the weakest part of the pipeline: wasteful, slow, fragile
+and unreproducible.
+
+### Papyrus was downloading 7.6 GB it never opens
+
+`download_papyrus(descriptors=...)` defaults to `'all'`. The notebook called it
+without that argument, so every install pulled the full descriptor set —
+mordred (3149 MB), CDDD (2167 MB), mold2 (1540 MB), ProDEC (435 MB), unirep
+(210 MB) and ECFP6 (100 MB) — none of which this notebook opens. A further
+751 MB `.tsv.xz` was retained alongside the `.parquet` built from it.
+
+Of 9.71 GB on disk, **1.30 GB was ever read.**
+
+Fixed with `descriptors=None, structures=False` on the download and
+`keep_original_files=False` on the read. A fresh install now takes ~1.3 GB, and
+8.58 GB was reclaimed from the existing one.
+
+### Papyrus++ was evaluated as a cheaper source and rejected
+
+`only_pp=True` fetches a much smaller curated file, which looked like an easy
+win. Measured: for CFTR it contains **410 compounds against 1284** from the full
+set filtered to `Quality == 'High'` — a strict subset (every ++ compound is also
+in the High set, and 874 are not in ++). Adopting it would have silently dropped
+68% of the Papyrus contribution, so the full dataset is retained.
+
+### The 1.3 GB file is now optional
+
+The subset actually consumed is 1284 rows = **0.25 MB** as zstd parquet. It is
+cached to `data/cache/papyrus_cftr_highquality.parquet` and committed, so a fresh
+clone runs the whole notebook with no large download. Verified by moving
+`~/.data/papyrus` aside entirely and confirming an identical end-to-end run
+(1591 compounds, scaffold R² 0.640, same ranking).
+
+The `Quality` predicate is now pushed into the lazy polars query, so 1284 rows
+are materialised instead of 371,193.
+
+### Cache-first instead of network-first
+
+Previously the notebook always called the ChEMBL API (~60 s) and used the cache
+only when that *failed* — so it could neither deliberately reuse a cache nor
+deliberately refresh one, and the dataset could shift silently between runs. Now
+it is cache-first with an explicit `REFRESH_DATA` flag, which also pins results
+to a fixed snapshot. Retry uses exponential backoff (10/20/40 s) and the client
+timeout was raised from 3 s to 30 s, since EBI tends to get slow before it fails.
+
+The ChEMBL cache also moved from `results/` to `data/cache/`: it is an input, not
+something the notebook computed.
+
+### Page size: another optimisation that isn't
+
+3729 records at the client's default `MAX_LIMIT` of 20 is ~187 HTTP requests,
+which looks obviously wasteful. Measured at 20 vs 1000: **58.6 s vs 60.4 s** — no
+difference, because the client already parallelises (`CONCURRENT_SIZE = 50`).
+Left alone, with a comment so it is not "fixed" later.
+
+### Provenance
+
+Nothing recorded which database versions produced the results — a genuine
+reproducibility gap for a thesis. Each cache now carries a `.meta.json` sidecar
+written at download time (so provenance survives later offline runs), and
+`results/data_provenance.json` collects them:
+
+- **ChEMBL** — `ChEMBL_37`, released 2026-05-01, target CHEMBL4051, record counts
+- **Papyrus** — requested `05.7`, resolved internal version `2024.09.2`, accession
+  P13569, the quality filter applied, row count
+- **BindingDB** — no API and no version string, so a **SHA256** of the TSV plus
+  size and mtime; that hash is the only precise way to say which export was used
+
+### Net effect
+
+| | Before | After |
+|---|---|---|
+| Papyrus on disk | 9.71 GB | **1.30 GB** |
+| Fresh clone download | ~1.3 GB + API | **none** (caches committed) |
+| Data acquisition per run | ~60 s + EBI uptime | instant, offline |
+| Database versions recorded | none | ChEMBL / Papyrus / BindingDB hash |
+
+Scientific output is unchanged, as it must be for a plumbing change: 1591
+compounds, scaffold-split R² 0.640, identical ranking.
+
+---
+
 ## Open limitations
 
 1. **The `pIC50 >= 5` filter is retained** (a deliberate decision to preserve the

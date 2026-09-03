@@ -44,7 +44,8 @@ similarity to the training set.
 │   └── IMPROVEMENTS.md        # what was changed, why, and the measured effect
 ├── data/
 │   ├── README.md              # how to obtain the input data
-│   └── bindingdb_cftr.tsv     # you must download this (see data/README.md)
+│   ├── bindingdb_cftr.tsv     # you must download this (see data/README.md)
+│   └── cache/                 # frozen source downloads (committed, ~0.5 MB)
 └── results/                   # generated CSVs
     └── figures/               # generated figures (PNG, 300 dpi)
 ```
@@ -62,6 +63,23 @@ similarity to the training set.
 Only **BindingDB** requires a manual step. Full instructions are in
 [`data/README.md`](data/README.md). If the TSV is missing, the notebook still
 runs using ChEMBL + Papyrus only and prints a warning.
+
+### A fresh clone needs no large download
+
+`data/cache/` contains frozen copies of exactly the data this notebook consumes —
+the ChEMBL pull (208 KB) and the CFTR high-quality slice of Papyrus (248 KB) —
+and both are committed. The notebook is **cache-first**, so a clean checkout runs
+end to end offline, in seconds, without touching the ChEMBL API or downloading
+the 1.3 GB Papyrus dataset. This is verified by running with `~/.data/papyrus`
+removed entirely.
+
+To re-download from source instead, set `REFRESH_DATA = True` in the setup cell.
+That refreshes both caches and their provenance sidecars. It is also required if
+you want to change the Papyrus quality threshold, since the cache is stored
+*after* the `Quality == 'High'` filter.
+
+Keeping the data frozen is deliberate: ChEMBL and Papyrus both change over time,
+and a thesis result should not shift between runs.
 
 The docking energies (section 11) and PLIP interaction counts (section 16) are
 **hard-coded** results from the external docking/PLIP work, so the final ranking
@@ -104,7 +122,7 @@ First run is slow because Papyrus downloads and caches a large file (~10 GB in
 | `model_split_comparison.csv` | Every model under random / scaffold / Butina cross-validation |
 | `final_ranking.csv` | Candidate ranking with score, docking, predicted activity + 90% interval, AD |
 | `control_validation.csv` | All molecules with prediction, interval, AD, and whether they are in the training set |
-| `chembl_cftr_raw.csv` | Cached raw ChEMBL download (also used as an offline fallback) |
+| `data_provenance.json` | Which database versions produced these results (ChEMBL release, Papyrus version, BindingDB SHA256) |
 | `figures/fig_final_ranking.png` | Ranking bar chart + the prediction intervals behind it |
 | `figures/fig_split_comparison.png` | R² per model under each split — the generalisation gap |
 | `figures/fig_control_validation.png` | Predicted activity vs docking, by group |
