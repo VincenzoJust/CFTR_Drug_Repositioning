@@ -22,9 +22,10 @@ output of block 1:
 2. **Molecular docking** (AutoDock Vina) on two CFTR structures: PDB **6MSM**
    (apo WT, cryo-EM) and an **AlphaFold2 ΔF508** model. *Done externally; the
    resulting binding energies are hard-coded in section 11.*
-3. **QSAR model** (this notebook): a Random Forest trained on the fused dataset
-   predicts pIC50 for each molecule. Docking and QSAR are then merged into an
-   **integrated score = 0.60 × docking + 0.40 × QSAR**.
+3. **QSAR model** (this notebook): an ensemble (Random Forest + XGBoost + SVR
+   with a Tanimoto kernel) trained on the fused dataset predicts activity for
+   each molecule, with a per-prediction uncertainty interval. Docking and QSAR
+   are then merged into an **integrated score = 0.60 × docking + 0.40 × QSAR**.
 
 The model is validated with positive controls (Ivacaftor and the approved CFTR
 correctors) and negative controls (drugs with no known CFTR activity), and each
@@ -39,10 +40,13 @@ similarity to the training set.
 .
 ├── CFTR_QSAR_pipeline.ipynb   # main notebook (run top to bottom)
 ├── requirements.txt
+├── docs/
+│   └── IMPROVEMENTS.md        # what was changed, why, and the measured effect
 ├── data/
-   ├── README.md              # how to obtain the input data
-   └── bindingdb_cftr.tsv     # you must download this (see data/README.md)
-
+│   ├── README.md              # how to obtain the input data
+│   └── bindingdb_cftr.tsv     # you must download this (see data/README.md)
+└── results/                   # generated CSVs
+    └── figures/               # generated figures (PNG, 300 dpi)
 ```
 
 ---
@@ -80,8 +84,14 @@ pip install -r requirements.txt
 jupyter lab CFTR_QSAR_pipeline.ipynb
 ```
 
-First run is slow because Papyrus downloads and caches a large file. Later runs
-use the cache.
+First run is slow because Papyrus downloads and caches a large file (~10 GB in
+`~/.data/papyrus`). Later runs use the cache.
+
+> **If you use conda:** some conda-forge MKL builds (seen with `mkl 2026.1.0`)
+> crash the Python interpreter on *any* numpy matrix multiply, which silently
+> breaks the neural-network comparison. If `numpy.random.rand(200,200) @ .T`
+> kills your Python, switch the BLAS:
+> `conda install -c conda-forge "libblas=*=*openblas"`
 
 ---
 
@@ -89,31 +99,59 @@ use the cache.
 
 | File | Content |
 |------|---------|
-| `dataset_full.csv` | Merged, deduplicated training dataset (SMILES + pIC50 + source) |
+| `dataset_full.csv` | Merged, deduplicated training dataset (SMILES, pActivity, replicate spread, endpoint, source) |
 | `model_comparison.csv` | ChEMBL-only vs fused-dataset model metrics |
-| `final_ranking.csv` | Final candidate ranking with score, docking, pIC50, AD |
-| `control_validation.csv` | All molecules with predicted pIC50, docking and AD |
-| `fig_final_ranking.png` | Ranking bar chart colored by applicability domain |
-| `fig_control_validation.png` | Predicted pIC50 vs docking, by group |
-| `fig_feature_importance.png` | Top-15 Random Forest descriptors |
-| `fig_plip_comparison.png` | PLIP interaction profile of the top-4 candidates |
+| `model_split_comparison.csv` | Every model under random / scaffold / Butina cross-validation |
+| `final_ranking.csv` | Candidate ranking with score, docking, predicted activity + 90% interval, AD |
+| `control_validation.csv` | All molecules with prediction, interval, AD, and whether they are in the training set |
+| `chembl_cftr_raw.csv` | Cached raw ChEMBL download (also used as an offline fallback) |
+| `figures/fig_final_ranking.png` | Ranking bar chart + the prediction intervals behind it |
+| `figures/fig_split_comparison.png` | R² per model under each split — the generalisation gap |
+| `figures/fig_control_validation.png` | Predicted activity vs docking, by group |
+| `figures/fig_feature_importance.png` | Top-15 Random Forest features |
+| `figures/fig_plip_comparison.png` | PLIP interaction profile of the top-4 candidates |
 
 ---
 
 ## Method notes and caveats
 
-- The fused dataset (ChEMBL + Papyrus + BindingDB) is more stable than ChEMBL
-  alone; the near-equal R² despite more data suggests the public CFTR
-  bioactivity space is close to its informational limit with conventional
-  descriptors.
+**Reported performance.** The headline figure is the **scaffold-split R² = 0.640**
+(Bemis-Murcko `GroupKFold`), not the random 5-fold R² of 0.758. Bioactivity
+datasets are dominated by analogue series, so a random split tests the model on
+molecules nearly identical to ones it has memorised. Since all seven candidates
+are structurally unrelated to the training data (max Tanimoto 0.26–0.33), the
+scaffold split is the regime that *matches* how the model is being used. A
+y-scrambling control returns R² = −0.10, confirming the signal is real.
+
+**The QSAR term cannot rank the candidates.** Their predicted activities span
+0.374 units while the uncertainty on any single prediction is 0.22–0.56. The
+ordering is therefore driven almost entirely by docking — which the weight
+sensitivity analysis independently confirms. The 60/40 weights were deliberately
+*not* re-tuned after seeing this; instead every prediction is reported with a
+90% interval and the limitation is stated explicitly.
+
+**Controls are read by mechanism.** Ivacaftor is a potentiator; Lumacaftor,
+Tezacaftor and Elexacaftor are correctors. About 87% of the training endpoint is
+potentiator-style functional EC50, so correctors are genuinely weak *in this
+assay class* (Lumacaftor's own measured median is pEC50 5.59). Only the
+potentiator is required to clear the negative controls.
+
+**Other caveats.**
+
 - All candidates fall in the **marginal applicability domain** (Tanimoto
-  ≈ 0.23–0.33), which is why docking is weighted higher (60%) than QSAR (40%).
+  ≈ 0.26–0.33), which is why docking is weighted higher (60%) than QSAR (40%).
 - The integrated score is **relative to the candidate group** (MinMax-normalized):
   0.000 means "worst of this set", not "no affinity".
 - Docking score differences of ~0.3 kcal/mol fall within Vina's error range
   (~2–3 kcal/mol) and should not be read as one drug "beating" another.
 - Fostamatinib is a **prodrug**; its docking/PLIP results are interpreted with
   caution and its active metabolite **R406** is included as a check.
+- The `pIC50 >= 5` activity filter is retained, so the model never sees an
+  inactive compound and cannot predict below ~5.
+
+A full account of what was changed, why, and the measured effect of each change
+— including what was tried and did **not** work — is in
+[`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md).
 
 ---
 

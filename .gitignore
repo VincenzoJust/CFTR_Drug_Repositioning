@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Papyrus caches several GB outside the repo by default (~/.data/papyrus),
+# but ignore it here in case PYSTOW_HOME is pointed at the project.
+.data/
+papyrus/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# results/ IS tracked on purpose: the CSVs and figures are thesis artefacts.
