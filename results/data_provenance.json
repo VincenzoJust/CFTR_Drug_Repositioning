@@ -1,0 +1,52 @@
+{
+  "chembl": {
+    "source": "ChEMBL web services",
+    "target_chembl_id": "CHEMBL4051",
+    "organism": "Homo sapiens",
+    "endpoints": [
+      "IC50",
+      "EC50",
+      "Ki",
+      "Kd"
+    ],
+    "n_records_total": 3729,
+    "n_records_kept": 1566,
+    "n_molecules": 1422,
+    "n_assays": 518,
+    "chembl_db_version": "ChEMBL_37",
+    "chembl_release_date": "2026-05-01",
+    "retrieved_at": "2026-09-03T21:30:50+00:00",
+    "loaded_from": "cache"
+  },
+  "papyrus": {
+    "source": "Papyrus",
+    "version_requested": "05.7",
+    "version_resolved": "2024.09.2",
+    "accession": "P13569",
+    "quality_filter": "High",
+    "plusplus": false,
+    "n_rows": 1284,
+    "retrieved_at": "2026-09-03T21:30:51+00:00",
+    "loaded_from": "cache"
+  },
+  "bindingdb": {
+    "source": "BindingDB (manual TSV export)",
+    "n_records": 1749,
+    "file": "bindingdb_cftr.tsv",
+    "size_bytes": 6038398,
+    "modified": "2026-09-03T14:35:01+00:00",
+    "sha256": "eb83ea07995397dc42a45fe4a6b42ea674f5e6b88106c015ac8065fcdf143ec9"
+  },
+  "run": {
+    "generated_at": "2026-09-04T13:34:34+00:00",
+    "refresh_data": false,
+    "seed": 42,
+    "fingerprint": {
+      "type": "Morgan count",
+      "radius": 2,
+      "n_bits": 1024
+    },
+    "activity_filter": "pIC50 >= 5",
+    "n_compounds_final": 1591
+  }
+}

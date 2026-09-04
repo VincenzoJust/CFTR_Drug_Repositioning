@@ -1,0 +1,16 @@
+name,group,control_class,hub_target,pIC50_pred,pIC50_sd,pIC50_lo,pIC50_hi,tanimoto_max,prediction_confidence,in_training,lipinski_ok,dock_mean
+Bumetanide,Candidate,-,CFTR,5.458,0.283,4.992,5.924,0.287,Medium (marginal zone),False,True,-7.178
+Glyburide,Candidate,-,CFTR,5.802,0.558,4.884,6.719,0.333,Medium (marginal zone),False,True,-9.894
+Ibuprofen,Candidate,-,CFTR,5.577,0.385,4.944,6.21,0.312,Medium (marginal zone),False,True,-6.43
+Cromoglicic_acid,Candidate,-,HSP90AA1,5.562,0.222,5.197,5.926,0.27,Medium (marginal zone),False,True,-9.336
+Fostamatinib,Candidate,-,PRKACA,5.71,0.437,4.992,6.429,0.258,Medium (marginal zone),False,False,-8.895
+Dasatinib,Candidate,-,HSPA8,5.427,0.345,4.86,5.995,0.275,Medium (marginal zone),False,True,-9.186
+Artenimol,Candidate,-,HSPA8,5.618,0.362,5.022,6.213,0.298,Medium (marginal zone),False,True,-6.75
+Ivacaftor,Control (+),potentiator,CFTR,6.508,0.324,5.974,7.041,1.0,High (inside domain),True,False,-9.572
+Lumacaftor,Control (+),corrector,CFTR,5.627,0.559,4.708,6.547,1.0,High (inside domain),True,True,-10.534
+Tezacaftor,Control (+),corrector,CFTR,6.036,0.523,5.176,6.896,1.0,High (inside domain),True,False,-10.19
+Elexacaftor,Control (+),corrector,CFTR,6.871,0.771,5.603,8.139,1.0,High (inside domain),True,False,-9.436
+Paracetamol,Control (-),-,None,5.47,0.494,4.657,6.282,0.341,Medium (marginal zone),False,True,-5.886
+Aspirin,Control (-),-,None,5.602,0.529,4.732,6.472,0.435,High (inside domain),False,True,-5.566
+Metformin,Control (-),-,None,5.846,0.838,4.467,7.225,0.163,Low (outside domain),False,True,-5.533
+R406,Metabolite,-,PRKACA,5.623,0.342,5.06,6.185,0.254,Medium (marginal zone),False,True,-9.239

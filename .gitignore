@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# ChEMBL client's sqlite HTTP cache. It normally lives in $HOME, but it is named
+# after the working directory it was created in, so guard against it landing here.
+.chembl_ws_client*
+
+# Papyrus caches ~1.3 GB outside the repo by default (~/.data/papyrus), but
+# ignore it here in case PYSTOW_HOME is pointed at the project.
+.data/
+papyrus/
+
+# data/cache holds frozen copies of the source downloads. The small caches below
+# are committed ON PURPOSE, so a fresh clone can run the notebook end to end with
+# no multi-gigabyte download. Anything else that lands here -- for example a
+# full-dataset export, which is ~59 MB -- is ignored.
+data/cache/*
+!data/cache/chembl_cftr_raw.csv
+!data/cache/papyrus_cftr_highquality.parquet
+!data/cache/*.meta.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# results/ IS tracked on purpose: the CSVs and figures are thesis artefacts.
